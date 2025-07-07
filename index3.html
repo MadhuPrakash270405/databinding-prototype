@@ -1,0 +1,211 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>MPM Technology Requirement Form</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet" />
+  <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+  <style>[v-hide]{display:none;}</style>
+</head>
+<body class="container py-4">
+
+  <h4>MPM Controls and Risk Reporting Form</h4>
+
+  <!-- NEW FIELD: Overall Model Risk Rating -->
+  <div class="mb-3">
+    <label class="form-label">Overall Model Risk Rating</label>
+    <select class="form-select" data-model="riskRating">
+      <option value="">-- Select Rating --</option>
+      <option>Low</option>
+      <option>Medium</option>
+      <option>High</option>
+    </select>
+  </div>
+
+  <!-- A. MPM Report Frequency -->
+  <div class="mb-3">
+    <label class="form-label">MPM Report Frequency</label>
+    <select class="form-select" data-model="reportFrequency" id="reportFrequency"></select>
+  </div>
+
+  <!-- Custom frequency input -->
+  <div class="mb-3" v-show="reportFrequency === 'Custom'">
+    <label class="form-label">Custom Frequency</label>
+    <input class="form-control" data-model="customFrequency" placeholder="e.g., Every 2nd Tuesday" />
+  </div>
+
+  <!-- First MPM Date -->
+  <div class="mb-3">
+    <label class="form-label">First MPM Date</label>
+    <input type="date" class="form-control" data-model="firstDate" />
+  </div>
+
+  <hr />
+
+  <!-- Performance Metric Table -->
+  <h5>Performance Metrics</h5>
+  <button class="btn btn-sm btn-secondary mb-2" onclick="addMetric()">+ Add Metric</button>
+
+  <div class="table-responsive">
+    <table class="table table-bordered align-middle text-nowrap">
+      <thead class="table-light">
+        <tr>
+          <th>#</th>
+          <th>Metric ID</th>
+          <th>Metric</th>
+          <th>Type</th>
+          <th>Test</th>
+          <th>Substitute</th>
+          <th>Rationale</th>
+          <th>Frequency</th>
+          <th>Warning Threshold</th>
+          <th>Breach Threshold</th>
+          <th>Reference Model</th>
+          <th>Escalation Party</th>
+          <th>Include?</th>
+        </tr>
+      </thead>
+      <tbody id="metricTableBody"></tbody>
+    </table>
+  </div>
+
+  <button class="btn btn-primary mt-4" onclick="submitForm()">Submit Form</button>
+
+  <script>
+    const state = {
+      reportFrequency: '',
+      customFrequency: '',
+      firstDate: '',
+      riskRating: '',
+      frequencies: ['Annually', 'Semi-annually', 'Quarterly', 'Monthly', 'Weekly', 'Custom'],
+      metrics: []
+    };
+
+    function addMetric() {
+      state.metrics.push({
+        id: '', metric: '', metricType: '', testType: '', subTest: '',
+        rationale: '', metricFrequency: '', customMetricFreq: '',
+        warn1: '', warnOp: '', warn2: '',
+        breach1: '', breachOp: '', breach2: '',
+        refModel: '', escalation: '', includeReport: false
+      });
+      render();
+    }
+
+    const reactive = new Proxy(state, {
+      set(obj, key, val) {
+        obj[key] = val;
+        render();
+        return true;
+      }
+    });
+
+    function bindInputs() {
+      $('[data-model]').each(function () {
+        const model = $(this).data('model');
+        const keys = model.match(/[^[\]]+/g);
+        let value = keys.reduce((acc, key) => acc[key], reactive);
+
+        if (this.type === 'checkbox') {
+          $(this).prop('checked', value);
+        } else {
+          $(this).val(value);
+        }
+
+        $(this).off('input change').on('input change', function () {
+          const val = this.type === 'checkbox' ? this.checked : this.value;
+          let ref = reactive;
+          for (let i = 0; i < keys.length - 1; i++) ref = ref[keys[i]];
+          ref[keys.at(-1)] = val;
+          render();
+        });
+      });
+    }
+
+    function evalExpr(expr) {
+      return Function(...Object.keys(reactive), `return ${expr}`)(...Object.values(reactive));
+    }
+
+    function render() {
+      const freqOptions = reactive.frequencies.map(f =>
+        `<option value="${f}" ${reactive.reportFrequency === f ? 'selected' : ''}>${f}</option>`
+      );
+      $('#reportFrequency').html(`<option value="">-- Select Frequency --</option>` + freqOptions.join(''));
+
+      const $table = $('#metricTableBody');
+      $table.html('');
+
+      reactive.metrics.forEach((m, index) => {
+        const row = $(`
+          <tr>
+            <td>${index + 1}</td>
+            <td><input class="form-control form-control-sm" data-model="metrics[${index}].id"></td>
+            <td><input class="form-control form-control-sm" data-model="metrics[${index}].metric"></td>
+            <td>
+              <select class="form-select form-select-sm" data-model="metrics[${index}].metricType">
+                <option>Usage Metric</option>
+                <option>Model Metric</option>
+                <option>Both</option>
+              </select>
+            </td>
+            <td>
+              <select class="form-select form-select-sm" data-model="metrics[${index}].testType">
+                <option>Backtesting</option>
+                <option>Sensitivity Analysis</option>
+                <option>Benchmark Model</option>
+                <option>Coefficient Stability Analysis</option>
+                <option>Alternative Test</option>
+              </select>
+            </td>
+            <td>${m.testType === 'Alternative Test' ? `<select class="form-select form-select-sm" data-model="metrics[${index}].subTest">
+              <option>Backtesting</option><option>Sensitivity Analysis</option><option>Benchmark Model</option>
+            </select>` : ''}</td>
+            <td>${m.testType === 'Alternative Test' ? `<input class="form-control form-control-sm" data-model="metrics[${index}].rationale">` : ''}</td>
+            <td><select class="form-select form-select-sm" data-model="metrics[${index}].metricFrequency" id="metricFreq${index}"></select></td>
+            <td><div class="input-group input-group-sm">
+              <input class="form-control" data-model="metrics[${index}].warn1">
+              <select class="form-select" data-model="metrics[${index}].warnOp">
+                <option>>=</option><option><=</option><option>==</option><option>!=</option>
+              </select>
+              <input class="form-control" data-model="metrics[${index}].warn2">
+            </div></td>
+            <td><div class="input-group input-group-sm">
+              <input class="form-control" data-model="metrics[${index}].breach1">
+              <select class="form-select" data-model="metrics[${index}].breachOp">
+                <option>>=</option><option><=</option><option>==</option><option>!=</option>
+              </select>
+              <input class="form-control" data-model="metrics[${index}].breach2">
+            </div></td>
+            <td><input class="form-control form-control-sm" data-model="metrics[${index}].refModel"></td>
+            <td><input class="form-control form-control-sm" data-model="metrics[${index}].escalation"></td>
+            <td class="text-center"><input type="checkbox" class="form-check-input" data-model="metrics[${index}].includeReport"></td>
+          </tr>
+        `);
+
+        $table.append(row);
+
+        const freqOpts = reactive.frequencies.map(f =>
+          `<option value="${f}" ${m.metricFrequency === f ? 'selected' : ''}>${f}</option>`
+        );
+        $(`#metricFreq${index}`).html(`<option value="">-- Select Frequency --</option>` + freqOpts.join(''));
+      });
+
+      $('[v-if]').each(function () {
+        try { $(this).toggle(evalExpr($(this).attr('v-if'))); } catch {}
+      });
+      $('[v-show]').each(function () {
+        try { $(this).css('display', evalExpr($(this).attr('v-show')) ? '' : 'none'); } catch {}
+      });
+
+      bindInputs();
+    }
+
+    function submitForm() {
+      alert("Submitted:\n" + JSON.stringify(state, null, 2));
+    }
+
+    $(function () {
+      render();
+    });
+  </script>
+</body>
+</html>
