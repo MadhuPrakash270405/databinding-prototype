@@ -1,0 +1,39 @@
+image: sonarsource/sonar-scanner-cli:latest
+
+pipelines:
+  default:
+    - step:
+        name: SonarQube Analysis
+        caches:
+          - sonar
+        script:
+          # Run SonarQube analysis
+          - sonar-scanner
+            -Dsonar.projectKey=$SONAR_PROJECT_KEY
+            -Dsonar.sources=.
+            -Dsonar.host.url=${SONAR_HOST_URL:-https://sonarcloud.io}
+            -Dsonar.login=$SONAR_TOKEN
+        after-script:
+          # Optional: Display quality gate status
+          - echo "SonarQube analysis completed"
+
+  # Optional: Pull request analysis
+  pull-requests:
+    '**':
+      - step:
+          name: SonarQube PR Analysis
+          caches:
+            - sonar
+          script:
+            - sonar-scanner
+              -Dsonar.projectKey=$SONAR_PROJECT_KEY
+              -Dsonar.sources=.
+              -Dsonar.host.url=${SONAR_HOST_URL:-https://sonarcloud.io}
+              -Dsonar.login=$SONAR_TOKEN
+              -Dsonar.pullrequest.key=$BITBUCKET_PR_ID
+              -Dsonar.pullrequest.branch=$BITBUCKET_BRANCH
+              -Dsonar.pullrequest.base=$BITBUCKET_PR_DESTINATION_BRANCH
+
+definitions:
+  caches:
+    sonar: /opt/sonar-scanner/.sonar/cache
