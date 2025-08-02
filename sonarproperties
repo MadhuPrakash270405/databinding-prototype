@@ -18,3 +18,12 @@ sonar.css.stylelint.reportPaths=reports/stylelint-result.json
 # For SonarCloud (uncomment and update if using SonarCloud)
 # sonar.organization=your-organization-key
 # sonar.host.url=https://sonarcloud.io
+
+echo "Running SonarQube analysis..."
+sonar-scanner \
+  -Dsonar.projectKey=my-project \
+  -Dsonar.projectName="My Project" \
+  -Dsonar.projectVersion=1.0 \
+  -Dsonar.sources=src \
+  -Dsonar.host.url=$SONAR_HOST_URL \
+  -Dsonar.login=$SONAR_TOKEN
