@@ -37,3 +37,33 @@ if [ ! -f "./sonar-scanner/bin/sonar-scanner" ]; then
     mv sonar-scanner-4.8.0.2856-linux sonar-scanner
     chmod +x sonar-scanner/bin/sonar-scanner
 fi
+
+#!/bin/bash
+
+echo "=== Checking Node.js Installation ==="
+
+# Check if node command exists
+if command -v node &> /dev/null; then
+    echo "✓ Node.js is installed"
+    echo "Node.js version: $(node --version)"
+    echo "Node.js location: $(which node)"
+else
+    echo "✗ Node.js is NOT installed"
+fi
+
+# Check if npm is available
+if command -v npm &> /dev/null; then
+    echo "✓ npm is installed"
+    echo "npm version: $(npm --version)"
+    echo "npm location: $(which npm)"
+else
+    echo "✗ npm is NOT installed"
+fi
+
+# Check if npx is available
+if command -v npx &> /dev/null; then
+    echo "✓ npx is available"
+    echo "npx version: $(npx --version)"
+else
+    echo "✗ npx is NOT available"
+fi
